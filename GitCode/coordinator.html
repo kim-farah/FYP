@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinator Dashboard - Kinderbot</title>
+    <style>
+        :root {
+            --dark-blue: #1E3A5F;
+            --orange: #FF6B35;
+            --white: #FFFFFF;
+            --light-gray: #F8F9FA;
+            --gray: #6C757D;
+            --border-gray: #E9ECEF;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', 'Segoe UI', sans-serif;
+            background: var(--light-gray);
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+        .dashboard-container { display: flex; flex-direction: column; height: 100vh; }
+        .top-bar {
+            background: var(--dark-blue);
+            color: var(--white);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+            flex-shrink: 0;
+        }
+        .logo { font-size: 20px; font-weight: 600; }
+        .user-info { display: flex; align-items: center; gap: 16px; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--white);
+            color: var(--white);
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: var(--orange); border-color: var(--orange); }
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        .sidebar {
+            width: 260px;
+            background: var(--white);
+            border-right: 1px solid var(--border-gray);
+            padding: 24px 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+            transition: background 0.3s ease;
+        }
+        .sidebar nav ul { list-style: none; }
+        .sidebar nav li {
+            padding: 12px 24px;
+            cursor: pointer;
+            color: var(--gray);
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .sidebar nav li:hover { background: var(--light-gray); color: var(--dark-blue); }
+        .sidebar nav li.active { background: var(--orange); color: var(--white); }
+        .content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+            transition: background 0.3s ease;
+        }
+        .page-content { display: none; }
+        .page-content.active { display: block; }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+        .section-header h2 { font-size: 24px; color: var(--dark-blue); margin: 0; }
+        .btn-primary {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--orange);
+            color: var(--orange);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-small {
+            padding: 4px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-gray);
+            background: white;
+            cursor: pointer;
+        }
+        .btn-danger { background: var(--danger); color: white; border: none; }
+        .class-cards {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 20px;
+            width: 260px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); }
+        .card h3 { font-size: 18px; color: var(--dark-blue); margin-bottom: 8px; }
+        .card .grade { color: var(--orange); font-size: 13px; margin-bottom: 12px; }
+        .card .stats, .card .teacher { color: var(--gray); font-size: 13px; margin: 6px 0; }
+        .data-table {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-gray);
+            overflow-x: auto;
+            width: 100%;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-gray); }
+        th { background: var(--light-gray); font-weight: 600; color: var(--dark-blue); }
+        .badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; background: #f0f0f0; }
+        .badge.published { background: #d4edda; color: #155724; }
+        .badge.draft { background: #fff3cd; color: #856404; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 550px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { margin: 0; color: var(--dark-blue); }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray); }
+        .modal-body { padding: 20px 24px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+        .form-input, .form-select { width: 100%; padding: 10px 12px; border: 1px solid var(--border-gray); border-radius: 8px; font-size: 14px; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+        .section-card {
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .section-details { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .section-detail { font-size: 14px; color: var(--gray); }
+        .section-actions { display: flex; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-gray); }
+        .settings-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .settings-item:last-child { border-bottom: none; }
+        .empty-state { text-align: center; padding: 40px; color: var(--gray); }
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-gray);
+        }
+        .student-item:last-child { border-bottom: none; }
+        .add-student-btn {
+            margin-top: 16px;
+            padding: 10px;
+            background: var(--light-gray);
+            border: 1px dashed var(--border-gray);
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            color: var(--orange);
+        }
+        .time-badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .time-badge.just-now { background: #d4edda; color: #155724; }
+        .time-badge.recent { background: #fff3cd; color: #856404; }
+        .time-badge.old { background: #f8d7da; color: #721c24; }
+        body.dark-mode { background: #1a1a2e; }
+        body.dark-mode .sidebar { background: #16213e; border-right-color: #2a2a4a; }
+        body.dark-mode .sidebar nav li { color: #aaa; }
+        body.dark-mode .sidebar nav li:hover { background: #1f2a4a; color: white; }
+        body.dark-mode .content { background: #1a1a2e; }
+        body.dark-mode .card, body.dark-mode .data-table, body.dark-mode .modal-content, body.dark-mode .settings-item,
+        body.dark-mode .section-card { background: #16213e; border-color: #2a2a4a; color: #ddd; }
+        body.dark-mode .card h3, body.dark-mode .section-header h2 { color: var(--orange); }
+        body.dark-mode .card .stats, body.dark-mode .card .teacher { color: #aaa; }
+        body.dark-mode th { background: #0f0f2a; color: white; }
+        body.dark-mode td { border-bottom-color: #2a2a4a; color: #ccc; }
+        body.dark-mode .btn-outline { border-color: var(--orange); color: var(--orange); }
+        body.dark-mode .form-input, body.dark-mode .form-select { background: #0f0f2a; border-color: #2a2a4a; color: white; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="top-bar">
+            <div class="logo">Kinderbot CMS</div>
+            <div class="user-info">
+                <span>👤 Coordinator</span>
+                <button class="logout-btn" onclick="location.href='login.html'">Logout</button>
+            </div>
+        </div>
+        <div class="main-layout">
+            <div class="sidebar">
+                <nav>
+                    <ul>
+                        <li class="active" data-page="dashboard">📊 Dashboard</li>
+                        <li data-page="classes">📚 Classes</li>
+                        <li data-page="teachers">👥 Teachers</li>
+                        <li data-page="parents">👨‍👩‍👧 Parents</li>
+                        <li data-page="activities">📝 Activities</li>
+                        <li data-page="settings">⚙️ Settings</li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="content">
+                <div id="dashboardPage" class="page-content active">
+                    <div class="section-header"><h2>Classes</h2><button class="btn-primary" id="newClassBtn">+ New Class</button></div>
+                    <div id="classCardsContainer" class="class-cards"></div>
+                    <div class="section-header"><h2>All Activities</h2><button class="btn-primary" id="newActivityBtn">+ New Activity</button></div>
+                    <div id="allActivitiesContainer" class="data-table"></div>
+                    <div class="section-header"><h2>Recent Activities Taught</h2></div>
+                    <div id="recentActivitiesContainer" class="data-table"></div>
+                </div>
+                <div id="classesPage" class="page-content">
+                    <div class="section-header"><h2>All Classes</h2><button class="btn-primary" id="newClassBtn2">+ New Class</button></div>
+                    <div id="classesTableContainer" class="data-table"></div>
+                </div>
+                <div id="teachersPage" class="page-content">
+                    <div class="section-header"><h2>Teachers</h2><button class="btn-primary" id="newTeacherBtn">+ New Teacher</button></div>
+                    <div id="teachersTableContainer" class="data-table"></div>
+                </div>
+                <div id="parentsPage" class="page-content">
+                    <div class="section-header"><h2>Parents</h2><button class="btn-primary" id="newParentBtn">+ New Parent</button></div>
+                    <div id="parentsTableContainer" class="data-table"></div>
+                </div>
+                <div id="activitiesPage" class="page-content">
+                    <div class="section-header"><h2>All Activities</h2><button class="btn-primary" id="newActivityBtn2">+ New Activity</button></div>
+                    <div id="activitiesTableContainer" class="data-table"></div>
+                </div>
+                <div id="settingsPage" class="page-content">
+                    <div class="section-header"><h2>Settings</h2></div>
+                    <div class="data-table">
+                        <div class="settings-item"><div><strong>School Year</strong><div style="font-size:13px;">Current academic year</div></div><div><button class="btn-small" id="schoolYearBtn">2024-2025</button></div></div>
+                        <div class="settings-item"><div><strong>System Theme</strong><div style="font-size:13px;">Light / Dark mode</div></div><div><button class="btn-small" id="themeBtn">Light</button></div></div>
+                        <div class="settings-item"><div><strong>Notifications</strong><div style="font-size:13px;">Email notifications</div></div><div><button class="btn-small" id="notificationsBtn">Enabled</button></div></div>
+                        <div class="settings-item"><div><strong>Data Export</strong><div style="font-size:13px;">Export all data as JSON</div></div><div><button class="btn-small" id="exportBtn">Export</button></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sectionsModal" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="modalClassName">Class Sections</h3><button class="modal-close" onclick="closeSectionsModal()">&times;</button></div><div class="modal-body" id="sectionsModalBody"></div></div></div>
+    <div id="addSectionModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add New Section</h3><button class="modal-close" onclick="closeAddSectionModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Section Name</label><input type="text" id="newSectionName" placeholder="e.g., A, B, Morning" class="form-input"></div><div class="form-group"><label>Teacher</label><select id="newSectionTeacher" class="form-select"></select></div><div class="form-group"><label>Max Students</label><input type="number" id="newSectionMaxStudents" value="25" class="form-input"></div><div class="form-group"><label>Schedule</label><input type="text" id="newSectionSchedule" placeholder="e.g., 9:00-10:30 AM" class="form-input"></div><div class="form-actions"><button class="btn-secondary" onclick="closeAddSectionModal()">Cancel</button><button class="btn-primary" onclick="saveNewSection()">Add Section</button></div></div></div></div>
+    <div id="addStudentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Add Student</h3><button class="modal-close" onclick="closeAddStudentModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Student Name</label><input type="text" id="newStudentName" class="form-input" placeholder="Full name"></div><div class="form-group"><label>Parent Name (optional)</label><input type="text" id="newStudentParent" class="form-input" placeholder="Parent name"></div><div class="form-actions"><button class="btn-secondary" onclick="closeAddStudentModal()">Cancel</button><button class="btn-primary" onclick="saveNewStudent()">Add Student</button></div></div></div></div>
+    <div id="editClassModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Class</h3><button class="modal-close" onclick="closeEditClassModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Class Name</label><input type="text" id="editClassName" class="form-input"></div><div class="form-group"><label>Age Range</label><input type="text" id="editClassGrade" class="form-input"></div><div class="form-group"><label>Teacher</label><input type="text" id="editClassTeacher" class="form-input"></div><div class="form-actions"><button class="btn-secondary" onclick="closeEditClassModal()">Cancel</button><button class="btn-primary" onclick="saveEditedClass()">Save</button></div></div></div></div>
+    <div id="editTeacherModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Teacher</h3><button class="modal-close" onclick="closeEditTeacherModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Name</label><input type="text" id="editTeacherName" class="form-input"></div><div class="form-group"><label>Email</label><input type="email" id="editTeacherEmail" class="form-input"></div><div class="form-group"><label>Phone</label><input type="text" id="editTeacherPhone" class="form-input"></div><div class="form-group"><label>Class</label><input type="text" id="editTeacherClass" class="form-input"></div><div class="form-actions"><button class="btn-secondary" onclick="closeEditTeacherModal()">Cancel</button><button class="btn-primary" onclick="saveEditedTeacher()">Save</button></div></div></div></div>
+    <div id="editParentModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Parent</h3><button class="modal-close" onclick="closeEditParentModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Name</label><input type="text" id="editParentName" class="form-input"></div><div class="form-group"><label>Email</label><input type="email" id="editParentEmail" class="form-input"></div><div class="form-group"><label>Phone</label><input type="text" id="editParentPhone" class="form-input"></div><div class="form-group"><label>Child</label><input type="text" id="editParentChild" class="form-input"></div><div class="form-actions"><button class="btn-secondary" onclick="closeEditParentModal()">Cancel</button><button class="btn-primary" onclick="saveEditedParent()">Save</button></div></div></div></div>
+    <div id="editActivityModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Edit Activity</h3><button class="modal-close" onclick="closeEditActivityModal()">&times;</button></div><div class="modal-body"><div class="form-group"><label>Title</label><input type="text" id="editActivityTitle" class="form-input"></div><div class="form-group"><label>Class</label><select id="editActivityClass" class="form-select"><option>KG1</option><option>KG2</option><option>KG3</option></select></div><div class="form-group"><label>Duration (min)</label><input type="number" id="editActivityDuration" class="form-input"></div><div class="form-group"><label>Difficulty</label><select id="editActivityDifficulty" class="form-select"><option>Easy</option><option>Medium</option><option>Hard</option></select></div><div class="form-group"><label>Status</label><select id="editActivityStatus" class="form-select"><option value="published">Published</option><option value="draft">Draft</option></select></div><div class="form-actions"><button class="btn-secondary" onclick="closeEditActivityModal()">Cancel</button><button class="btn-primary" onclick="saveEditedActivity()">Save</button></div></div></div></div>
+
+    <script>
+        function getRelativeTime(timestamp) {
+            if (!timestamp) return { text: "Just now", class: "just-now" };
+            let date = new Date(timestamp);
+            if (isNaN(date.getTime())) return { text: "Just now", class: "just-now" };
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            if (diffMins < 1) return { text: "Just now", class: "just-now" };
+            if (diffMins < 60) return { text: `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`, class: "recent" };
+            if (diffHours < 24) return { text: `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`, class: "recent" };
+            if (diffDays === 1) return { text: "Yesterday", class: "recent" };
+            return { text: `${diffDays} days ago`, class: "old" };
+        }
+        
+        let classes = [
+            { id: 1, name: "KG1", grade: "Ages 3-4", teacher: "Sara Ahmed" },
+            { id: 2, name: "KG2", grade: "Ages 4-5", teacher: "Ahmad Ali" },
+            { id: 3, name: "KG3", grade: "Ages 5-6", teacher: "Leila Hassan" }
+        ];
+        let sections = {
+            1: [{ id: 1, name: "A", teacher: "Ms. Sara", students: ["Ali M.", "Sara H.", "Omar K."], maxStudents: 25, schedule: "9:00-10:30 AM" },
+                { id: 2, name: "B", teacher: "Ms. Leila", students: ["Rami N.", "Lina F."], maxStudents: 25, schedule: "10:30-12:00 PM" }],
+            2: [{ id: 1, name: "A", teacher: "Mr. Ahmad", students: ["Khaled Z.", "Nour A."], maxStudents: 25, schedule: "9:00-10:30 AM" }],
+            3: [{ id: 1, name: "A", teacher: "Ms. Leila", students: ["Samer T."], maxStudents: 25, schedule: "9:00-10:30 AM" }]
+        };
+        let teachers = [
+            { id: 1, name: "Sara Ahmed", email: "sara@kinderbot.com", phone: "0123456789", class: "KG1" },
+            { id: 2, name: "Ahmad Ali", email: "ahmad@kinderbot.com", phone: "0987654321", class: "KG2" },
+            { id: 3, name: "Leila Hassan", email: "leila@kinderbot.com", phone: "0555123456", class: "KG3" }
+        ];
+        let parents = [
+            { id: 1, name: "Ali Nassour", email: "ali@email.com", phone: "0123456789", child: "Ali M." },
+            { id: 2, name: "Rana Fadel", email: "rana@email.com", phone: "0987654321", child: "Sara H." }
+        ];
+        let activities = [
+            { id: 1, title: "BUILD A ROBOT", class: "KG1", duration: "30", difficulty: "Medium", status: "published" },
+            { id: 2, title: "SPINNING TOP", class: "KG1", duration: "20", difficulty: "Easy", status: "published" }
+        ];
+        const now = new Date();
+        let teacherLog = [
+            { id: 1, activity: "BUILD A ROBOT", class: "KG1-A", teacher: "Ms. Sara", timestamp: now.toISOString(), duration: "30 min" },
+            { id: 2, activity: "SPINNING TOP", class: "KG1-B", teacher: "Ms. Sara", timestamp: new Date(now - 86400000).toISOString(), duration: "20 min" },
+            { id: 3, activity: "DIRECTION CAR", class: "KG2-A", teacher: "Mr. Ahmad", timestamp: new Date(now - 172800000).toISOString(), duration: "25 min" }
+        ];
+        
+        function getClassTotalStudents(classId) {
+            const classSections = sections[classId] || [];
+            return classSections.reduce((total, s) => total + s.students.length, 0);
+        }
+        function updateAllClassDisplays() { displayClassesDashboard(); displayAllClassesTable(); }
+        
+        const sidebarItems = document.querySelectorAll('.sidebar nav li');
+        const pages = {
+            dashboard: document.getElementById('dashboardPage'), classes: document.getElementById('classesPage'),
+            teachers: document.getElementById('teachersPage'), parents: document.getElementById('parentsPage'),
+            activities: document.getElementById('activitiesPage'), settings: document.getElementById('settingsPage')
+        };
+        sidebarItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const pageName = item.getAttribute('data-page');
+                sidebarItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                Object.values(pages).forEach(p => p?.classList.remove('active'));
+                if (pages[pageName]) pages[pageName].classList.add('active');
+                if (pageName === 'dashboard') { displayClassesDashboard(); displayAllActivities(); displayTeacherLog(); }
+                if (pageName === 'classes') displayAllClassesTable();
+                if (pageName === 'teachers') displayTeachersTable();
+                if (pageName === 'parents') displayParentsTable();
+                if (pageName === 'activities') displayAllActivitiesTable();
+            });
+        });
+        
+        function displayClassesDashboard() {
+            const container = document.getElementById('classCardsContainer');
+            container.innerHTML = classes.map(c => `<div class="card"><h3>${c.name}</h3><div class="grade">${c.grade}</div><div class="stats">👥 ${getClassTotalStudents(c.id)} students</div><div class="teacher">👩‍🏫 ${c.teacher}</div><button class="btn-outline" onclick="viewSections(${c.id})" style="margin-top:12px;">View Sections</button></div>`).join('');
+        }
+        
+        function displayAllActivities() {
+            const container = document.getElementById('allActivitiesContainer');
+            if (!container) return;
+            if (activities.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px;">No activities yet. Click "+ New Activity" to create one.</p>';
+                return;
+            }
+            let html = '<table class="data-table">';
+            html += '<thead><tr><th>Activity</th><th>Class</th><th>Duration</th><th>Status</th></tr></thead>';
+            html += '<tbody>';
+            activities.slice(0, 5).forEach(a => {
+                html += '<tr>';
+                html += `<td><strong>${a.title}</strong></td>`;
+                html += `<td>${a.class}</td>`;
+                html += `<td>${a.duration} min</td>`;
+                html += `<td><span class="badge ${a.status}">${a.status}</span></td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function displayTeacherLog() {
+            const container = document.getElementById('recentActivitiesContainer');
+            if (!container) return;
+            const logs = [...teacherLog].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            if (logs.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: 40px;">No activities taught yet.</p>';
+                return;
+            }
+            let html = '<table class="data-table">';
+            html += '<thead><tr><th>Activity</th><th>Class</th><th>Teacher</th><th>Duration</th><th>Time</th>;</thead>';
+            html += '<tbody>';
+            logs.forEach(l => {
+                const r = getRelativeTime(l.timestamp);
+                html += '<tr>';
+                html += `<td><strong>${l.activity}</strong></td>`;
+                html += `<td>${l.class}</td>`;
+                html += `<td>👩‍🏫 ${l.teacher}</td>`;
+                html += `<td>${l.duration}</td>`;
+                html += `<td><span class="time-badge ${r.class}">${r.text}</span></td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function displayAllClassesTable() {
+            const container = document.getElementById('classesTableContainer');
+            let html = '<table class="data-table">';
+            html += '<thead><tr><th>Class</th><th>Age Range</th><th>Students</th><th>Teacher</th><th>Sections</th><th>Actions</th></tr></thead>';
+            html += '<tbody>';
+            classes.forEach(c => {
+                html += '<tr>';
+                html += `<td><strong>${c.name}</strong></td>`;
+                html += `<td>${c.grade}</td>`;
+                html += `<td>${getClassTotalStudents(c.id)}</td>`;
+                html += `<td>${c.teacher}</td>`;
+                html += `<td><button class="btn-small" onclick="viewSections(${c.id})">📋 ${(sections[c.id] || []).length} Sections</button></td>`;
+                html += `<td><button class="btn-small" onclick="editClass(${c.id})">✏️ Edit</button> <button class="btn-small btn-danger" onclick="deleteClass(${c.id})">🗑️ Delete</button></td>`;
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function addNewClass() {
+            let n = prompt('Class name:'), g = prompt('Age range:'), t = prompt('Teacher:');
+            if (n && g && t) { let newClass = { id: classes.length + 1, name: n, grade: g, teacher: t }; classes.push(newClass); sections[newClass.id] = []; updateAllClassDisplays(); alert('Class added!'); }
+        }
+        
+        function editClass(id) { let c = classes.find(c => c.id === id); if(c){ document.getElementById('editClassName').value=c.name; document.getElementById('editClassGrade').value=c.grade; document.getElementById('editClassTeacher').value=c.teacher; window.editClassId=id; document.getElementById('editClassModal').style.display='flex'; } }
+        function saveEditedClass() { let c = classes.find(c => c.id === window.editClassId); if(c){ c.name=document.getElementById('editClassName').value; c.grade=document.getElementById('editClassGrade').value; c.teacher=document.getElementById('editClassTeacher').value; updateAllClassDisplays(); closeEditClassModal(); alert('Class updated!'); } }
+        function deleteClass(id) { if(confirm('Delete this class?')){ classes=classes.filter(c=>c.id!==id); delete sections[id]; updateAllClassDisplays(); alert('Deleted'); } }
+        function closeEditClassModal() { document.getElementById('editClassModal').style.display='none'; }
+        
+        let currentClassId = null, currentSectionId = null;
+        function viewSections(classId) { currentClassId = classId; const classItem = classes.find(c => c.id === classId); document.getElementById('modalClassName').innerHTML = `${classItem.name} - Sections`; loadTeacherDropdown(); displaySections(); document.getElementById('sectionsModal').style.display = 'flex'; }
+        function loadTeacherDropdown() { const sel = document.getElementById('newSectionTeacher'); sel.innerHTML = '<option value="">Select Teacher</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join(''); }
+        function displaySections() {
+            const classSections = sections[currentClassId] || [];
+            const body = document.getElementById('sectionsModalBody');
+            if (classSections.length === 0) { body.innerHTML = `<div class="empty-state"><p>No sections found.</p><button class="btn-primary" onclick="openAddSectionModal()">+ Add Section</button></div>`; return; }
+            body.innerHTML = classSections.map(s => `
+                <div class="section-card">
+                    <h4>Section ${s.name}</h4>
+                    <div class="section-details">
+                        <div class="section-detail"><strong>👩‍🏫 Teacher:</strong> ${s.teacher}</div>
+                        <div class="section-detail"><strong>👥 Students:</strong> ${s.students.length}/${s.maxStudents}</div>
+                        <div class="section-detail"><strong>🕒 Schedule:</strong> ${s.schedule}</div>
+                    </div>
+                    <div id="student-list-${s.id}">
+                        ${s.students.map(student => `<div class="student-item"><span>👦 ${student}</span><button class="btn-small btn-danger" onclick="removeStudent(${currentClassId}, ${s.id}, '${student}')">Remove</button></div>`).join('')}
+                    </div>
+                    <button class="add-student-btn" onclick="openAddStudentModal(${s.id})">+ Add Student to Section ${s.name}</button>
+                    <div class="section-actions">
+                        <button class="btn-small" onclick="editSection(${s.id})">✏️ Edit Section</button>
+                        <button class="btn-small btn-danger" onclick="deleteSection(${s.id})">🗑️ Delete Section</button>
+                    </div>
+                </div>
+            `).join('') + `<button class="btn-primary" onclick="openAddSectionModal()" style="width:100%;margin-top:16px;">+ Add New Section</button>`;
+        }
+        function openAddSectionModal() { document.getElementById('sectionsModal').style.display = 'none'; document.getElementById('addSectionModal').style.display = 'flex'; }
+        function closeSectionsModal() { document.getElementById('sectionsModal').style.display = 'none'; }
+        function closeAddSectionModal() { document.getElementById('addSectionModal').style.display = 'none'; if (currentClassId) document.getElementById('sectionsModal').style.display = 'flex'; }
+        function saveNewSection() {
+            let name = document.getElementById('newSectionName').value, teacher = document.getElementById('newSectionTeacher').value, max = document.getElementById('newSectionMaxStudents').value, schedule = document.getElementById('newSectionSchedule').value;
+            if (!name) { alert('Enter section name'); return; }
+            let classSections = sections[currentClassId] || [];
+            classSections.push({ id: classSections.length + 1, name: name, teacher: teacher || 'Unassigned', students: [], maxStudents: parseInt(max) || 25, schedule: schedule || 'TBD' });
+            sections[currentClassId] = classSections;
+            closeAddSectionModal(); displaySections(); updateAllClassDisplays(); alert('Section added!');
+        }
+        function editSection(sectionId) {
+            let classSections = sections[currentClassId] || [];
+            let s = classSections.find(s => s.id === sectionId);
+            if (s) {
+                let newName = prompt('Section name:', s.name); if (newName) s.name = newName;
+                let newTeacher = prompt('Teacher:', s.teacher); if (newTeacher) s.teacher = newTeacher;
+                let newMax = prompt('Max students:', s.maxStudents); if (newMax) s.maxStudents = parseInt(newMax);
+                let newSchedule = prompt('Schedule:', s.schedule); if (newSchedule) s.schedule = newSchedule;
+                sections[currentClassId] = classSections; displaySections(); alert('Section updated!');
+            }
+        }
+        function deleteSection(sectionId) { if (confirm('Delete this section?')) { let classSections = sections[currentClassId] || []; classSections = classSections.filter(s => s.id !== sectionId); sections[currentClassId] = classSections; displaySections(); updateAllClassDisplays(); alert('Section deleted!'); } }
+        function openAddStudentModal(sectionId) { currentSectionId = sectionId; document.getElementById('sectionsModal').style.display = 'none'; document.getElementById('addStudentModal').style.display = 'flex'; }
+        function closeAddStudentModal() { document.getElementById('addStudentModal').style.display = 'none'; if (currentClassId) document.getElementById('sectionsModal').style.display = 'flex'; }
+        function saveNewStudent() {
+            let studentName = document.getElementById('newStudentName').value, parentName = document.getElementById('newStudentParent').value;
+            if (!studentName) { alert('Enter student name'); return; }
+            let classSections = sections[currentClassId] || [], section = classSections.find(s => s.id === currentSectionId);
+            if (section) {
+                section.students.push(studentName); sections[currentClassId] = classSections;
+                if (parentName) { parents.push({ id: parents.length + 1, name: parentName, email: '', phone: '', child: studentName }); displayParentsTable(); }
+                document.getElementById('newStudentName').value = ''; document.getElementById('newStudentParent').value = '';
+                closeAddStudentModal(); displaySections(); updateAllClassDisplays(); alert(`Student ${studentName} added!`);
+            }
+        }
+        function removeStudent(classId, sectionId, studentName) { if (confirm(`Remove ${studentName}?`)) { let classSections = sections[classId] || [], section = classSections.find(s => s.id === sectionId); if (section) { section.students = section.students.filter(s => s !== studentName); sections[classId] = classSections; displaySections(); updateAllClassDisplays(); alert('Student removed!'); } } }
+        
+        function displayTeachersTable() {
+            const container = document.getElementById('teachersTableContainer');
+            let html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Class</th><th>Actions</th></tr></thead><tbody>';
+            teachers.forEach(t => {
+                html += `<tr><td><strong>${t.name}</strong></td><td>${t.email}</td><td>${t.phone}</td><td>${t.class}</td><td><button class="btn-small" onclick="editTeacher(${t.id})">✏️ Edit</button> <button class="btn-small btn-danger" onclick="deleteTeacher(${t.id})">🗑️ Delete</button></td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        function addNewTeacher() { let n = prompt('Name:'), e = prompt('Email:'), p = prompt('Phone:'), c = prompt('Class:'); if (n) { teachers.push({ id: teachers.length + 1, name: n, email: e || '', phone: p || '', class: c || '' }); displayTeachersTable(); alert('Teacher added!'); } }
+        function editTeacher(id) { let t = teachers.find(t => t.id === id); if (t) { document.getElementById('editTeacherName').value = t.name; document.getElementById('editTeacherEmail').value = t.email; document.getElementById('editTeacherPhone').value = t.phone; document.getElementById('editTeacherClass').value = t.class; window.editTeacherId = id; document.getElementById('editTeacherModal').style.display = 'flex'; } }
+        function saveEditedTeacher() { let t = teachers.find(t => t.id === window.editTeacherId); if (t) { t.name = document.getElementById('editTeacherName').value; t.email = document.getElementById('editTeacherEmail').value; t.phone = document.getElementById('editTeacherPhone').value; t.class = document.getElementById('editTeacherClass').value; displayTeachersTable(); closeEditTeacherModal(); alert('Teacher updated!'); } }
+        function deleteTeacher(id) { if (confirm('Delete teacher?')) { teachers = teachers.filter(t => t.id !== id); displayTeachersTable(); } }
+        function closeEditTeacherModal() { document.getElementById('editTeacherModal').style.display = 'none'; }
+        
+        function displayParentsTable() {
+            const container = document.getElementById('parentsTableContainer');
+            let html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Child</th><th>Actions</th></tr></thead><tbody>';
+            parents.forEach(p => {
+                html += `<tr><td><strong>${p.name}</strong></td><td>${p.email}</td><td>${p.phone}</td><td>${p.child}</td><td><button class="btn-small" onclick="editParent(${p.id})">✏️ Edit</button> <button class="btn-small btn-danger" onclick="deleteParent(${p.id})">🗑️ Delete</button></td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        function addNewParent() { let n = prompt('Parent name:'), e = prompt('Email:'), p = prompt('Phone:'), c = prompt('Child:'); if (n) { parents.push({ id: parents.length + 1, name: n, email: e || '', phone: p || '', child: c || '' }); displayParentsTable(); alert('Parent added!'); } }
+        function editParent(id) { let p = parents.find(p => p.id === id); if (p) { document.getElementById('editParentName').value = p.name; document.getElementById('editParentEmail').value = p.email; document.getElementById('editParentPhone').value = p.phone; document.getElementById('editParentChild').value = p.child; window.editParentId = id; document.getElementById('editParentModal').style.display = 'flex'; } }
+        function saveEditedParent() { let p = parents.find(p => p.id === window.editParentId); if (p) { p.name = document.getElementById('editParentName').value; p.email = document.getElementById('editParentEmail').value; p.phone = document.getElementById('editParentPhone').value; p.child = document.getElementById('editParentChild').value; displayParentsTable(); closeEditParentModal(); alert('Parent updated!'); } }
+        function deleteParent(id) { if (confirm('Delete parent?')) { parents = parents.filter(p => p.id !== id); displayParentsTable(); } }
+        function closeEditParentModal() { document.getElementById('editParentModal').style.display = 'none'; }
+        
+        function displayAllActivitiesTable() {
+            const container = document.getElementById('activitiesTableContainer');
+            let html = '<table class="data-table"><thead><tr><th>Title</th><th>Class</th><th>Duration</th><th>Difficulty</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+            activities.forEach(a => {
+                html += `<tr><td><strong>${a.title}</strong></td><td>${a.class}</td><td>${a.duration} min</td><td>${a.difficulty}</td><td><span class="badge ${a.status}">${a.status}</span></td><td><button class="btn-small" onclick="editActivity(${a.id})">✏️ Edit</button> <button class="btn-small btn-danger" onclick="deleteActivity(${a.id})">🗑️ Delete</button></td></tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        function editActivity(id) { let a = activities.find(a => a.id === id); if (a) { document.getElementById('editActivityTitle').value = a.title; document.getElementById('editActivityClass').value = a.class; document.getElementById('editActivityDuration').value = a.duration; document.getElementById('editActivityDifficulty').value = a.difficulty; document.getElementById('editActivityStatus').value = a.status; window.editActivityId = id; document.getElementById('editActivityModal').style.display = 'flex'; } }
+        function saveEditedActivity() { let a = activities.find(a => a.id === window.editActivityId); if (a) { a.title = document.getElementById('editActivityTitle').value; a.class = document.getElementById('editActivityClass').value; a.duration = document.getElementById('editActivityDuration').value; a.difficulty = document.getElementById('editActivityDifficulty').value; a.status = document.getElementById('editActivityStatus').value; displayAllActivities(); displayAllActivitiesTable(); closeEditActivityModal(); alert('Activity updated!'); } }
+        function deleteActivity(id) { if (confirm('Delete activity?')) { activities = activities.filter(a => a.id !== id); displayAllActivities(); displayAllActivitiesTable(); } }
+        function closeEditActivityModal() { document.getElementById('editActivityModal').style.display = 'none'; }
+        
+        let schoolYear = '2024-2025', theme = 'light', notifications = true;
+        document.getElementById('schoolYearBtn')?.addEventListener('click', () => { let ny = prompt('Enter school year:', schoolYear); if (ny) { schoolYear = ny; document.getElementById('schoolYearBtn').innerHTML = schoolYear; alert('School year updated!'); } });
+        document.getElementById('themeBtn')?.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; document.getElementById('themeBtn').innerHTML = theme === 'light' ? 'Light' : 'Dark'; document.body.classList.toggle('dark-mode', theme === 'dark'); localStorage.setItem('coordinator_theme', theme); alert(`Theme changed to ${theme}`); });
+        if (localStorage.getItem('coordinator_theme') === 'dark') { theme = 'dark'; document.body.classList.add('dark-mode'); document.getElementById('themeBtn').innerHTML = 'Dark'; }
+        document.getElementById('notificationsBtn')?.addEventListener('click', () => { notifications = !notifications; document.getElementById('notificationsBtn').innerHTML = notifications ? 'Enabled' : 'Disabled'; alert(`Notifications ${notifications ? 'enabled' : 'disabled'}`); });
+        document.getElementById('exportBtn')?.addEventListener('click', () => { let data = { classes, teachers, parents, activities, teacherLog, sections }; let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kinderbot_backup.json'; a.click(); alert('Data exported!'); });
+        
+        document.getElementById('newClassBtn')?.addEventListener('click', addNewClass);
+        document.getElementById('newClassBtn2')?.addEventListener('click', addNewClass);
+        document.getElementById('newTeacherBtn')?.addEventListener('click', addNewTeacher);
+        document.getElementById('newParentBtn')?.addEventListener('click', addNewParent);
+        document.getElementById('newActivityBtn')?.addEventListener('click', () => location.href = 'coordinator-create.html');
+        document.getElementById('newActivityBtn2')?.addEventListener('click', () => location.href = 'coordinator-create.html');
+        
+        displayClassesDashboard(); displayAllActivities(); displayTeacherLog();
+    </script>
+</body>
+</html>
